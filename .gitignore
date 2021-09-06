@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.db
+*.sqlite3
+
+.idea/
+ssh_host_key
+ssh_host_rsa_key
