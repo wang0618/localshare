@@ -69,11 +69,10 @@ class MySSHServer(asyncssh.SSHServer):
 
 
 async def start_server():
-
-    host_key_path = path.join(here_dir, 'ssh_host_rsa_key')
+    key_file = path.join(here_dir, 'key', 'ssh_host_rsa_key')
     await asyncssh.create_server(
         MySSHServer, host='0.0.0.0', port=1022,
-        server_host_keys=[host_key_path],
+        server_host_keys=[key_file],
         process_factory=handle_client,
         # allow_pty=False,  # no allocation of a pseudo-tty
         agent_forwarding=False,
