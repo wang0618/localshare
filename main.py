@@ -7,6 +7,7 @@ from os import path
 
 import asyncssh
 from asyncssh.listener import create_unix_forward_listener
+
 here_dir = path.abspath(path.dirname(__file__))
 
 server_host = 'app.pywebio.online'
@@ -51,19 +52,39 @@ class MySSHServer(asyncssh.SSHServer):
     def password_auth_supported(self):
         return True
 
-    def unix_server_requested(self, listen_path):
+    def new_sock_path(self):
         sock_name = get_random(12)
-        rewrite_path = os.path.join(sock_dir, '%s.sock' % sock_name)
+        sock_path = os.path.join(sock_dir, '%s.sock' % sock_name)
         self.conn.set_extra_info(sock_name=sock_name)
+        return sock_path
+
+    def unix_server_requested(self, listen_path):
+        rewrite_path = self.new_sock_path()
 
         async def tunnel_connection(session_factory):
             """Forward a local connection over SSH"""
+            # listen_path is a fake path
             return await self.conn.create_unix_connection(session_factory, listen_path)
 
         try:
             return create_unix_forward_listener(self.conn, asyncio.get_event_loop(),
                                                 tunnel_connection,
                                                 rewrite_path)
+        except OSError as exc:
+            raise
+
+    def server_requested(self, listen_host, listen_port):
+        sock_path = self.new_sock_path()
+
+        async def tunnel_connection(session_factory):
+            """Forward a local connection over SSH"""
+            fake_orig_host, fake_orig_port = '127.0.0.1', 8080
+            return (await self.conn.create_connection(session_factory, listen_host, listen_port,
+                                                      fake_orig_host, fake_orig_port))
+
+        try:
+            return create_unix_forward_listener(self.conn, asyncio.get_event_loop(),
+                                                tunnel_connection, sock_path)
         except OSError as exc:
             raise
 
