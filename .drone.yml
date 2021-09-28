@@ -15,8 +15,8 @@ steps:
       - docker rm -f localshare || true
       - >
         docker run --restart=always --name localshare -d -p 1022:1022 -p 443:443
-        -v /usr/localshare:/localshare/key
-        -v /opt/cert/app.pywebio.online:/localshare/cert
+        -e APP_SERVER_NAME=app.pywebio.online
+        -v /opt/localshare_config:/config
         --label="traefik.http.routers.localshare.rule=HostRegexp(\`{subdomain:[a-z0-9]+}.app.pywebio.online\`, \`app.pywebio.online\`)"
         --label="traefik.http.services.localshare.loadbalancer.server.port=80"
         localshare

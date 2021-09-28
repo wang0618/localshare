@@ -4,9 +4,7 @@ WORKDIR /localshare
 
 ADD ./ .
 
-RUN bash /localshare/install-nginx-debian.sh
-
-RUN cp /localshare/nginx.conf /etc/nginx/conf.d/
+RUN bash /localshare/docker/install-nginx-debian.sh
 
 # for ssh
 EXPOSE 1022
@@ -20,6 +18,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 RUN echo 'Asia/Shanghai' >/etc/timezone
 
-ENTRYPOINT ["/localshare/docker-entrypoint.sh"]
 
-CMD python main.py
+CMD /localshare/docker/start.sh

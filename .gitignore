@@ -8,3 +8,4 @@ __pycache__/
 ssh_host_key
 ssh_host_rsa_key
 gitignore
+config

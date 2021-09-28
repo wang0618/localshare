@@ -8,15 +8,23 @@ from os import path
 import asyncssh
 from asyncssh.listener import create_unix_forward_listener
 
-here_dir = path.abspath(path.dirname(__file__))
+config_dir = path.abspath(path.dirname(__file__))
+server_name = 'app.pywebio.online'
+sock_dir = None
 
-server_host = 'app.pywebio.online'
-sock_dir = '/tmp/ltun'
+
+def keygen():
+    key_file = path.join(config_dir, 'ssh_host_key')
+    if not path.exists(key_file):
+        key = asyncssh.generate_private_key('ssh-rsa')
+        bytes = key.export_private_key()
+        open(key_file, 'wb').write(bytes)
+        print('ssh_host_key generated')
 
 
 async def handle_client(process):
     process.stdout.write('The public entrypoint for your local web service is:\nhttp://%s.%s\n' %
-                         (process.get_extra_info('sock_name'), server_host))
+                         (process.get_extra_info('sock_name'), server_name))
     # process.exit(0)
     try:
         async for line in process.stdin:
@@ -74,6 +82,7 @@ class MySSHServer(asyncssh.SSHServer):
             raise
 
     def server_requested(self, listen_host, listen_port):
+        """use sock forward even request port forward"""
         sock_path = self.new_sock_path()
 
         async def tunnel_connection(session_factory):
@@ -89,10 +98,10 @@ class MySSHServer(asyncssh.SSHServer):
             raise
 
 
-async def start_server():
-    key_file = path.join(here_dir, 'key', 'ssh_host_rsa_key')
+async def start_server(host='0.0.0.0', port=1022):
+    key_file = path.join(config_dir, 'ssh_host_key')
     await asyncssh.create_server(
-        MySSHServer, host='0.0.0.0', port=1022,
+        MySSHServer, host=host, port=port,
         server_host_keys=[key_file],
         process_factory=handle_client,
         # allow_pty=False,  # no allocation of a pseudo-tty
@@ -104,16 +113,29 @@ async def start_server():
 
 
 if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--port", type=int, default=1022, help='The port for ssh server')
+    parser.add_argument("--config-dir", type=str, default='.', help='The dir to provide the required files')
+    parser.add_argument("--socket-dir", type=str, default='/tmp/localshare', help='The dir to save the socket files')
+    parser.add_argument("server_name", type=str, help='The domain name of the server')
+    args = parser.parse_args()
+
+    sock_dir = args.socket_dir
+    server_name = args.server_name
+    config_dir = args.config_dir
+
     os.umask(0o000)
+
+    keygen()
 
     if not path.exists(sock_dir):
         os.mkdir(sock_dir)
 
     loop = asyncio.get_event_loop()
-
     try:
-        loop.run_until_complete(start_server())
+        loop.run_until_complete(start_server(port=args.port))
     except (OSError, asyncssh.Error) as exc:
         sys.exit('Error starting server: ' + str(exc))
-
     loop.run_forever()

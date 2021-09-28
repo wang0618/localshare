@@ -4,12 +4,14 @@ map $http_upgrade $connection_upgrade {
 }
 
 server {
-    server_name   ~^(?<app_name>.+)\.app.pywebio.online$;
+    server_name   ~^(?<app_name>.+)\.{{ server_name }}$;
     listen 80;
+    {% if cert_dir %}
     listen 443 ssl;
 
-    ssl_certificate   /localshare/cert/cert.pem;
-    ssl_certificate_key  /localshare/cert/key.key;
+    ssl_certificate   {{ cert_dir }}/cert.pem;
+    ssl_certificate_key  {{ cert_dir }}/cert.key;
+    {% endif %}
 
     location / {
         proxy_read_timeout 600s;
@@ -18,7 +20,7 @@ server {
         proxy_set_header Host $http_host;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
-        proxy_pass http://unix:/tmp/ltun/${app_name}.sock;
+        proxy_pass http://unix:{{ socket_dir }}/${app_name}.sock;
     }
 }
 
