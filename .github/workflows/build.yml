@@ -1,0 +1,22 @@
+name: Docker Image Build
+
+on:
+  push:
+    branches: master
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag ghcr.io/wang0618/localshare:latest
+    - name: Push image
+      run: |
+        echo $CR_PAT | docker login ghcr.io -u wang0618 --password-stdin
+        docker push ghcr.io/wang0618/localshare:latest
+      env:
+        CR_PAT: ${{ secrets.CR_TOKEN }}
