@@ -1,5 +1,7 @@
 FROM python:3.9-buster
 
+LABEL org.opencontainers.image.source https://github.com/wang0618/localshare
+
 WORKDIR /localshare
 
 ADD ./ .
