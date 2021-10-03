@@ -4,13 +4,16 @@ import random
 import string
 import sys
 from os import path
-
+import getopt
+import json
 import asyncssh
 from asyncssh.listener import create_unix_forward_listener
 
 config_dir = path.abspath(path.dirname(__file__))
 server_name = 'app.pywebio.online'
 sock_dir = None
+server_port = 1022
+https = False
 
 
 def keygen():
@@ -22,9 +25,30 @@ def keygen():
         print('ssh_host_key generated')
 
 
+def parse_ssh_arguments(arguments):
+    try:
+        optlist, _ = getopt.getopt(arguments, '', ['output='])
+    except getopt.GetoptError:
+        return {}
+    return dict(optlist)
+
+
 async def handle_client(process):
-    process.stdout.write('The public entrypoint for your local web service is:\nhttp://%s.%s\n' %
-                         (process.get_extra_info('sock_name'), server_name))
+    print('command', process.command)
+    sock_name = process.get_extra_info('sock_name')
+    if not sock_name:
+        usage = f"ssh -R /:host:port -p {server_port} {server_name}"
+        process.stderr.write(f'Missing "-R" argument for ssh command.\nUsage: {usage}\n')
+        process.exit(1)
+        return
+
+    entrypoint = '%s://%s.%s' % ('https' if https else 'http', sock_name, server_name)
+    kwargs = parse_ssh_arguments((process.command or '').split())
+    if kwargs.get('--output', 'text') == 'json':
+        response = json.dumps({'address': entrypoint, 'status': 'success'})
+    else:
+        response = 'The public entrypoint for your local web service is:\n%s' % entrypoint
+    process.stdout.write(response + '\n')
     # process.exit(0)
     try:
         async for line in process.stdin:
@@ -119,12 +143,15 @@ if __name__ == '__main__':
     parser.add_argument("--port", type=int, default=1022, help='The port for ssh server')
     parser.add_argument("--config-dir", type=str, default='.', help='The dir to provide the required files')
     parser.add_argument("--socket-dir", type=str, default='/tmp/localshare', help='The dir to save the socket files')
+    parser.add_argument("--https", action="store_true", help='Whether to enable https')
     parser.add_argument("server_name", type=str, help='The domain name of the server')
     args = parser.parse_args()
 
     sock_dir = args.socket_dir
     server_name = args.server_name
     config_dir = args.config_dir
+    server_port = args.port
+    https = args.https
 
     os.umask(0o000)
 
