@@ -151,7 +151,7 @@ if __name__ == '__main__':
     server_name = args.server_name
     config_dir = args.config_dir
     server_port = args.port
-    https = args.https
+    https = args.https or os.environ.get('HTTPS', '').lower() == 'true'
 
     os.umask(0o000)
 
